@@ -18,7 +18,8 @@ class PvPObserverApp {
         this.currentView = 'overall'; // 'overall' | 'date-YYYY-MM-DD-matchIndex'
         this.sortColumn = 'tier';
         this.sortAscending = true;
-        this.playerLimit = 500;
+        this.playerLimit = 1000;
+        this.expandedDate = null; // Track which date group is expanded
 
         // Cached statistics for coloring
         this.kdaValues = [];
@@ -65,14 +66,6 @@ class PvPObserverApp {
         // Load demo data button
         document.getElementById('loadDemoBtn')?.addEventListener('click', () => {
             this.loadDemoData();
-        });
-
-        // Player limit input
-        document.getElementById('playerLimit')?.addEventListener('change', (e) => {
-            this.playerLimit = Math.max(10, Math.min(10000, parseInt(e.target.value) || 500));
-            e.target.value = this.playerLimit;
-            this.updateDisplayPlayers();
-            this.render();
         });
 
         // Refresh button
@@ -645,31 +638,40 @@ class PvPObserverApp {
         const match = sortedMatches[matchIndex];
         if (!match?.PlayerScoreboards) return [];
 
-        // Map match players to full stats
+        // Map match players to single-match stats (not cumulative)
         const playerLookup = new Map(this.allPlayers.map(p => [p.fullName, p]));
 
         return match.PlayerScoreboards.map(player => {
             const key = `${player.name}@${player.server || 'Unknown'}`;
             const fullStats = playerLookup.get(key);
 
-            if (fullStats) {
-                return {
-                    ...fullStats,
-                    team: player.team || '',
-                    matchJob: player.job || ''
-                };
-            }
+            // Calculate single-match KDA
+            const kills = player.kills || 0;
+            const deaths = player.deaths || 0;
+            const assists = player.assists || 0;
+            const damage = player.damage || 0;
+            const matchKda = deaths > 0 ? (kills + assists) / deaths : kills + assists;
 
             return {
                 name: player.name,
                 server: player.server || 'Unknown',
                 fullName: key,
-                flMatches: 0,
-                kda: 0,
-                avgDamage: 0,
-                mostPlayedJob: player.job || '未知',
-                tier: null,
-                team: player.team || ''
+                // Use overall tier for reference
+                tier: fullStats?.tier || null,
+                tierScore: fullStats?.tierScore || 0,
+                // Single match stats
+                matchKills: kills,
+                matchDeaths: deaths,
+                matchAssists: assists,
+                matchKda: matchKda,
+                matchDamage: damage,
+                matchJob: player.job || '未知',
+                team: player.team || '',
+                // Overall stats for reference
+                flMatches: fullStats?.flMatches || 0,
+                kda: fullStats?.kda || 0,
+                avgDamage: fullStats?.avgDamage || 0,
+                mostPlayedJob: fullStats?.mostPlayedJob || '未知'
             };
         });
     }
@@ -775,26 +777,51 @@ class PvPObserverApp {
         const container = document.getElementById('matchTabs');
         if (!container) return;
 
-        // Create date-based tabs with nested time tabs
+        // Create collapsible date tabs - only show dates initially
         container.innerHTML = this.matchHeaders.map(({ dateKey, matches }) => {
             const dateStr = this.formatDateDisplay(dateKey);
             const isToday = dateKey === this.formatDateKey(new Date());
             const dateLabel = isToday ? '今天' : dateStr;
+            const isExpanded = this.expandedDate === dateKey;
 
-            // Create submenu for times
+            // Create submenu for times (hidden by default)
             const timeTabs = matches.map((match, i) => {
                 const timeStr = this.formatTimeOnly(match.parsedTime);
-                return `<button class="tab" data-tab="date-${dateKey}-${match.globalIndex}">
-                    <span class="tab-icon">⏱️</span>
+                const tabId = `date-${dateKey}-${match.globalIndex}`;
+                const isActive = this.currentView === tabId;
+                return `<button class="tab time-tab ${isActive ? 'active' : ''}" data-tab="${tabId}">
                     ${timeStr}
                 </button>`;
             }).join('');
 
-            return `<div class="match-date-group">
-                <div class="match-date-label">${dateLabel} (${matches.length})</div>
-                <div class="match-time-tabs">${timeTabs}</div>
+            return `<div class="match-date-group ${isExpanded ? 'expanded' : ''}" data-date="${dateKey}">
+                <button class="tab date-tab" data-date-toggle="${dateKey}">
+                    <span class="tab-icon">📅</span>
+                    ${dateLabel}
+                    <span class="match-count">(${matches.length})</span>
+                    <span class="expand-icon">${isExpanded ? '▼' : '▶'}</span>
+                </button>
+                <div class="match-time-tabs ${isExpanded ? '' : 'hidden'}">${timeTabs}</div>
             </div>`;
         }).join('');
+
+        // Add click handlers for date toggles
+        container.querySelectorAll('[data-date-toggle]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const dateKey = btn.getAttribute('data-date-toggle');
+                this.toggleDateGroup(dateKey);
+            });
+        });
+    }
+
+    toggleDateGroup(dateKey) {
+        // Toggle expanded state
+        if (this.expandedDate === dateKey) {
+            this.expandedDate = null;
+        } else {
+            this.expandedDate = dateKey;
+        }
+        this.createMatchTabs();
     }
 
     formatMatchTime(date) {
@@ -830,48 +857,91 @@ class PvPObserverApp {
         const tbody = document.getElementById('playerTableBody');
         if (!tbody) return;
 
-        const isMatchView = this.currentView.startsWith('match-');
+        const isMatchView = this.currentView.startsWith('date-');
 
         tbody.innerHTML = this.displayPlayers.map(player => {
             const tierClass = this.tierCalculator.getTierClass(player.tier);
-            const kdaClass = this.tierCalculator.getKdaClass(player.kda, this.kdaValues);
-            const dmgClass = this.tierCalculator.getDamageClass(player.avgDamage, this.damageValues);
-            const matchesClass = player.flMatches > 10 ? 'highlight' : '';
 
-            const teamHtml = isMatchView
-                ? `<td class="team-col">${this.renderTeamBadge(player.team)}</td>`
-                : '';
+            // For match view: use match-specific stats; for overall: use cumulative stats
+            if (isMatchView) {
+                // Single match data
+                const kdaDisplay = player.matchKda?.toFixed(1) || '-';
+                const damageDisplay = player.matchDamage > 0 ? (player.matchDamage / 10000).toFixed(1) : '-';
+                const jobDisplay = player.matchJob || '未知';
 
-            const jobDisplay = isMatchView && player.matchJob
-                ? player.matchJob
-                : player.mostPlayedJob;
+                return `
+                    <tr>
+                        <td>
+                            ${player.tier
+                        ? `<span class="tier-badge ${tierClass}" data-tooltip="Score: ${player.tierScore?.toFixed(1) || 0}">${player.tier}</span>`
+                        : `<span class="tier-none">-</span>`
+                    }
+                        </td>
+                        <td class="team-col">${this.renderTeamBadge(player.team)}</td>
+                        <td class="name-col">
+                            <span class="player-name">${this.escapeHtml(player.name)}</span>
+                            <span class="player-server">${this.escapeHtml(player.server)}</span>
+                        </td>
+                        <td class="stat-kda" data-tooltip="K:${player.matchKills || 0} D:${player.matchDeaths || 0} A:${player.matchAssists || 0}">
+                            ${kdaDisplay}
+                        </td>
+                        <td class="stat-damage" data-tooltip="${this.formatNumber(player.matchDamage || 0)}">
+                            ${damageDisplay}
+                        </td>
+                        <td><span class="job-badge">${this.escapeHtml(jobDisplay)}</span></td>
+                    </tr>
+                `;
+            } else {
+                // Overall cumulative data
+                const kdaClass = this.tierCalculator.getKdaClass(player.kda, this.kdaValues);
+                const dmgClass = this.tierCalculator.getDamageClass(player.avgDamage, this.damageValues);
+                const matchesClass = player.flMatches > 10 ? 'highlight' : '';
+                const jobDisplay = player.mostPlayedJob || '未知';
 
-            return `
-                <tr>
-                    <td>
-                        ${player.tier
-                    ? `<span class="tier-badge ${tierClass}" data-tooltip="Score: ${player.tierScore?.toFixed(1) || 0}">${player.tier}</span>`
-                    : `<span class="tier-none">-</span>`
-                }
-                    </td>
-                    ${teamHtml}
-                    <td>
-                        <span class="player-name">${this.escapeHtml(player.name)}</span>
-                        <span class="player-server">${this.escapeHtml(player.server)}</span>
-                    </td>
-                    <td class="stat-matches ${matchesClass}">${player.flMatches || '-'}</td>
-                    <td class="stat-kda ${kdaClass}" data-tooltip="K:${player.totalKills || 0} D:${player.totalDeaths || 0} A:${player.totalAssists || 0}">
-                        ${player.kda?.toFixed(1) || '-'}
-                    </td>
-                    <td class="stat-damage ${dmgClass}" data-tooltip="${this.formatNumber(player.avgDamage || 0)}">
-                        ${player.avgDamage > 0 ? (player.avgDamage / 10000).toFixed(0) : '-'}
-                    </td>
-                    <td><span class="job-badge">${this.escapeHtml(jobDisplay)}</span></td>
-                </tr>
-            `;
+                return `
+                    <tr>
+                        <td>
+                            ${player.tier
+                        ? `<span class="tier-badge ${tierClass}" data-tooltip="Score: ${player.tierScore?.toFixed(1) || 0}">${player.tier}</span>`
+                        : `<span class="tier-none">-</span>`
+                    }
+                        </td>
+                        <td class="name-col">
+                            <span class="player-name">${this.escapeHtml(player.name)}</span>
+                            <span class="player-server">${this.escapeHtml(player.server)}</span>
+                        </td>
+                        <td class="stat-matches ${matchesClass}">${player.flMatches || '-'}</td>
+                        <td class="stat-kda ${kdaClass}" data-tooltip="K:${player.totalKills || 0} D:${player.totalDeaths || 0} A:${player.totalAssists || 0}">
+                            ${player.kda?.toFixed(1) || '-'}
+                        </td>
+                        <td class="stat-damage ${dmgClass}" data-tooltip="${this.formatNumber(player.avgDamage || 0)}">
+                            ${player.avgDamage > 0 ? (player.avgDamage / 10000).toFixed(0) : '-'}
+                        </td>
+                        <td><span class="job-badge">${this.escapeHtml(jobDisplay)}</span></td>
+                    </tr>
+                `;
+            }
         }).join('');
 
         this.updateSortIndicators();
+        this.updateTableHeaders();
+    }
+
+    updateTableHeaders() {
+        const isMatchView = this.currentView.startsWith('date-');
+        const thead = document.querySelector('#playerTable thead tr');
+        if (!thead) return;
+
+        // Update header visibility
+        document.querySelectorAll('.team-col').forEach(el => {
+            el.classList.toggle('hidden', !isMatchView);
+        });
+
+        // Update header text for match view
+        const matchesHeader = thead.querySelector('[data-sort="matches"]');
+        if (matchesHeader) {
+            matchesHeader.classList.toggle('hidden', isMatchView);
+        }
     }
 
     renderTeamBadge(team) {

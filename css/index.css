@@ -452,32 +452,48 @@ body::before {
 
 .match-tabs {
     display: flex;
-    gap: var(--space-md);
+    gap: var(--space-sm);
     flex-wrap: wrap;
+    align-items: flex-start;
 }
 
 .match-date-group {
     display: flex;
     flex-direction: column;
-    gap: var(--space-sm);
-    padding: var(--space-sm);
-    background: rgba(255, 255, 255, 0.02);
-    border-radius: var(--radius-md);
+    gap: var(--space-xs);
 }
 
-.match-date-label {
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: var(--text-secondary);
-    padding: 0 var(--space-sm);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
+.date-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
+}
+
+.date-tab .match-count {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.date-tab .expand-icon {
+    font-size: 0.7rem;
+    margin-left: var(--space-xs);
+    opacity: 0.6;
 }
 
 .match-time-tabs {
     display: flex;
     gap: var(--space-xs);
     flex-wrap: wrap;
+    padding-left: var(--space-md);
+}
+
+.match-time-tabs.hidden {
+    display: none;
+}
+
+.time-tab {
+    padding: var(--space-xs) var(--space-sm);
+    font-size: 0.8rem;
 }
 
 /* Stats Bar */
@@ -513,29 +529,6 @@ body::before {
     font-size: 1.25rem;
     font-weight: 700;
     color: var(--text-primary);
-}
-
-.player-limit-input {
-    width: 80px;
-    padding: 4px 8px;
-    background: var(--bg-tertiary);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-sm);
-    color: var(--text-primary);
-    font-family: inherit;
-    font-size: 0.9rem;
-    text-align: center;
-    transition: all var(--transition-normal);
-}
-
-.player-limit-input:focus {
-    outline: none;
-    border-color: var(--accent-primary);
-    box-shadow: 0 0 0 2px var(--accent-glow);
-}
-
-.player-limit-input:hover {
-    border-color: var(--accent-primary);
 }
 
 /* =========================================
@@ -697,15 +690,22 @@ body::before {
 }
 
 /* Player Name */
+.name-col {
+    min-width: 180px;
+    white-space: nowrap;
+}
+
 .player-name {
     font-weight: 500;
     color: var(--text-primary);
+    white-space: nowrap;
 }
 
 .player-server {
     display: block;
     font-size: 0.75rem;
     color: var(--text-muted);
+    white-space: nowrap;
 }
 
 /* Stats Cells */
