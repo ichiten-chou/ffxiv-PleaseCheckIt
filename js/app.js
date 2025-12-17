@@ -1,9 +1,9 @@
 /**
- * PvP Stalker - Main Application
+ * PvP Observer - Main Application
  * FFXIV PvP Player Analyzer
  */
 
-class PvPStalkerApp {
+class PvPObserverApp {
     constructor() {
         this.parser = new LiteDBParser();
         this.tierCalculator = new TierCalculator();
@@ -15,9 +15,10 @@ class PvPStalkerApp {
         this.matchHeaders = [];
 
         // View state
-        this.currentView = 'recent500'; // 'recent500' | 'match-0' to 'match-4'
-        this.sortColumn = 'matches';
-        this.sortAscending = false;
+        this.currentView = 'overall'; // 'overall' | 'date-YYYY-MM-DD-matchIndex'
+        this.sortColumn = 'tier';
+        this.sortAscending = true;
+        this.playerLimit = 500;
 
         // Cached statistics for coloring
         this.kdaValues = [];
@@ -29,7 +30,7 @@ class PvPStalkerApp {
 
     init() {
         this.bindEvents();
-        console.log('PvP Stalker initialized');
+        console.log('PvP Observer initialized');
     }
 
     bindEvents() {
@@ -64,6 +65,14 @@ class PvPStalkerApp {
         // Load demo data button
         document.getElementById('loadDemoBtn')?.addEventListener('click', () => {
             this.loadDemoData();
+        });
+
+        // Player limit input
+        document.getElementById('playerLimit')?.addEventListener('change', (e) => {
+            this.playerLimit = Math.max(10, Math.min(10000, parseInt(e.target.value) || 500));
+            e.target.value = this.playerLimit;
+            this.updateDisplayPlayers();
+            this.render();
         });
 
         // Refresh button
@@ -484,12 +493,31 @@ class PvPStalkerApp {
     processData() {
         if (this.rawMatches.length === 0) return;
 
-        // Extract match headers (recent 5 for tabs)
-        this.matchHeaders = this.rawMatches
+        // Extract match headers - group by date for last 10 days
+        const sortedMatches = this.rawMatches
             .filter(m => m.MatchStartTime)
-            .sort((a, b) => this.parseMatchTime(b.MatchStartTime) - this.parseMatchTime(a.MatchStartTime))
-            .slice(0, 5)
-            .map(m => this.parseMatchTime(m.MatchStartTime));
+            .map(m => ({ ...m, parsedTime: this.parseMatchTime(m.MatchStartTime) }))
+            .sort((a, b) => b.parsedTime - a.parsedTime);
+
+        // Get unique dates from last 10 days
+        const dateMap = new Map();
+        const now = new Date();
+        const tenDaysAgo = new Date(now.getTime() - 10 * 24 * 60 * 60 * 1000);
+
+        sortedMatches.forEach((match, index) => {
+            if (match.parsedTime < tenDaysAgo) return;
+
+            const dateKey = this.formatDateKey(match.parsedTime);
+            if (!dateMap.has(dateKey)) {
+                dateMap.set(dateKey, []);
+            }
+            dateMap.get(dateKey).push({ ...match, globalIndex: index });
+        });
+
+        // Convert to array and sort by date (newest first)
+        this.matchHeaders = Array.from(dateMap.entries())
+            .sort((a, b) => b[0].localeCompare(a[0]))
+            .map(([dateKey, matches]) => ({ dateKey, matches }));
 
         // Aggregate player statistics
         const playerMap = new Map();
@@ -569,10 +597,15 @@ class PvPStalkerApp {
             .map(p => p.avgDamage)
             .sort((a, b) => a - b);
 
-        // Limit to 500 for display
+        // Sort by tier and matches (no limit - user controls display limit)
         this.allPlayers = this.allPlayers
-            .sort((a, b) => b.flMatches - a.flMatches)
-            .slice(0, 500);
+            .sort((a, b) => {
+                // Sort by tier first (T0 = 1, lower number = better)
+                const tierDiff = (a.tier ? this.tierToNum(a.tier) : 99) - (b.tier ? this.tierToNum(b.tier) : 99);
+                if (tierDiff !== 0) return tierDiff;
+                // Then by matches
+                return b.flMatches - a.flMatches;
+            });
 
         // Update display
         this.updateDisplayPlayers();
@@ -589,10 +622,13 @@ class PvPStalkerApp {
     }
 
     updateDisplayPlayers() {
-        if (this.currentView === 'recent500') {
-            this.displayPlayers = [...this.allPlayers];
-        } else if (this.currentView.startsWith('match-')) {
-            const matchIndex = parseInt(this.currentView.split('-')[1]);
+        if (this.currentView === 'overall') {
+            // Apply player limit for overall stats view
+            this.displayPlayers = this.allPlayers.slice(0, this.playerLimit);
+        } else if (this.currentView.startsWith('date-')) {
+            // Parse date-YYYY-MM-DD-index format
+            const parts = this.currentView.split('-');
+            const matchIndex = parseInt(parts[parts.length - 1]);
             this.displayPlayers = this.getMatchPlayers(matchIndex);
         }
 
@@ -717,7 +753,7 @@ class PvPStalkerApp {
         });
 
         // Show/hide team column
-        const isMatchView = tabId.startsWith('match-');
+        const isMatchView = tabId.startsWith('date-');
         document.querySelectorAll('.team-col').forEach(el => {
             el.classList.toggle('hidden', !isMatchView);
         });
@@ -739,12 +775,25 @@ class PvPStalkerApp {
         const container = document.getElementById('matchTabs');
         if (!container) return;
 
-        container.innerHTML = this.matchHeaders.map((date, i) => {
-            const timeStr = this.formatMatchTime(date);
-            return `<button class="tab" data-tab="match-${i}">
-                <span class="tab-icon">⏱️</span>
-                ${timeStr}
-            </button>`;
+        // Create date-based tabs with nested time tabs
+        container.innerHTML = this.matchHeaders.map(({ dateKey, matches }) => {
+            const dateStr = this.formatDateDisplay(dateKey);
+            const isToday = dateKey === this.formatDateKey(new Date());
+            const dateLabel = isToday ? '今天' : dateStr;
+
+            // Create submenu for times
+            const timeTabs = matches.map((match, i) => {
+                const timeStr = this.formatTimeOnly(match.parsedTime);
+                return `<button class="tab" data-tab="date-${dateKey}-${match.globalIndex}">
+                    <span class="tab-icon">⏱️</span>
+                    ${timeStr}
+                </button>`;
+            }).join('');
+
+            return `<div class="match-date-group">
+                <div class="match-date-label">${dateLabel} (${matches.length})</div>
+                <div class="match-time-tabs">${timeTabs}</div>
+            </div>`;
         }).join('');
     }
 
@@ -755,6 +804,26 @@ class PvPStalkerApp {
         const hour = date.getHours().toString().padStart(2, '0');
         const min = date.getMinutes().toString().padStart(2, '0');
         return `${month}/${day} ${hour}:${min}`;
+    }
+
+    formatDateKey(date) {
+        if (!date) return '';
+        const year = date.getFullYear();
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+        const day = date.getDate().toString().padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+
+    formatDateDisplay(dateKey) {
+        const [year, month, day] = dateKey.split('-');
+        return `${month}/${day}`;
+    }
+
+    formatTimeOnly(date) {
+        if (!date || isNaN(date.getTime())) return '未知';
+        const hour = date.getHours().toString().padStart(2, '0');
+        const min = date.getMinutes().toString().padStart(2, '0');
+        return `${hour}:${min}`;
     }
 
     render() {
@@ -825,7 +894,7 @@ class PvPStalkerApp {
     }
 
     updateStats() {
-        document.getElementById('playerCount').textContent = this.displayPlayers.length;
+        document.getElementById('totalPlayerCount').textContent = this.allPlayers.length;
         document.getElementById('matchCount').textContent = this.rawMatches.length;
     }
 
@@ -858,5 +927,5 @@ class PvPStalkerApp {
 
 // Initialize app when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
-    window.app = new PvPStalkerApp();
+    window.app = new PvPObserverApp();
 });

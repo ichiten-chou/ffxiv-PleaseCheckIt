@@ -1,25 +1,25 @@
-# FFxiv-Pvp-Stalker
+# PvP Observer
 
-## 🎮 FFXIV PvP 玩家分析器
+## 🎮 FFXIV PvP 玩家觀察器
 
-一個現代化的網頁應用程式，用於分析 FFXIV PvP 玩家數據。
+一個現代化的網頁應用程式，用於觀察並分析 FFXIV PvP 玩家數據。
 
 ![Preview](https://img.shields.io/badge/status-beta-orange)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
 ### ✨ 功能
 
-- **最近500人** - 顯示最近遇到的 500 名玩家統計
-- **最近五場** - 查看最近 5 場比賽的詳細資料
-- **Tier 分級系統** - 根據 KDA、傷害、場次計算 T0-T5 分級
-- **現代 UI** - 深色主題、毛玻璃效果、流暢動畫
+- **整體統計** - 顯示所有玩家統計，支援自訂顯示數量 (10-10000人)
+- **最近10日** - 按日期分類查看最近 10 天的比賽記錄
+- **Tier 分級系統** - 根據 KDA、傷害、場次計算 T0-T5 分級，T0 優先排序
+- **現代 UI** - 深色主題、毛玻璃效果、流暢動畫、居中版面
 - **本地處理** - 所有資料在瀏覽器本地處理，無需上傳伺服器
 
 ### 🚀 使用方式
 
 1. 開啟網頁：[GitHub Pages Link]
-2. 點擊「上傳 data.db」或拖曳檔案
-3. 選擇你的 `data.db` 檔案
+2. 點擊「上傳資料」或拖曳 `data.json` 檔案
+3. 調整顯示玩家數量 (預設 500)
 
 ### 📍 data.db 位置
 
@@ -31,6 +31,14 @@
 
 ```
 C:\Users\[用戶名]\AppData\Roaming\XIVLauncher\pluginConfigs\PvpStats\data.db
+```
+
+### 🔄 轉換資料
+
+使用 PowerShell 腳本轉換 data.db 為 JSON：
+
+```powershell
+.\tools\convert-db.ps1 -InputPath "你的data.db路徑" -OutputPath ".\data.json"
 ```
 
 ### 📊 Tier 分級說明
@@ -52,7 +60,16 @@ C:\Users\[用戶名]\AppData\Roaming\XIVLauncher\pluginConfigs\PvpStats\data.db
 
 ### 📝 更新日誌
 
-#### v1.0.0 (2024-12-17)
+#### v2.0.0 (2025-12-17)
+- 重新命名為 PvP Observer
+- 改進 UI 版面，內容居中顯示
+- 支援全部玩家分析（無上限）
+- 可自訂顯示數量 (10-10000)
+- 修正 Tier 排序問題
+- 最近10日比賽按日期分組
+- 優化標籤 UX
+
+#### v1.0.0 (2025-12-17)
 - 初始版本發布
 - 支援 data.db 解析
 - 最近500人 / 最近五場功能

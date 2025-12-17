@@ -4,8 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🎮 PvP Stalker - FFXIV 玩家分析器</title>
-    <meta name="description" content="分析 FFXIV PvP 玩家數據，查看 KDA、傷害統計和 Tier 排名">
+    <title>🎮 PvP Observer - FFXIV 玩家分析器</title>
+    <meta name="description" content="觀察並分析 FFXIV PvP 玩家數據，查看 KDA、傷害統計和 Tier 排名">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
@@ -21,7 +21,7 @@
             <div class="header-left">
                 <h1 class="logo">
                     <span class="logo-icon">⚔️</span>
-                    <span class="logo-text">PvP Stalker</span>
+                    <span class="logo-text">PvP Observer</span>
                 </h1>
                 <span class="logo-subtitle">FFXIV 玩家分析器</span>
             </div>
@@ -46,8 +46,8 @@
             <div class="welcome-screen" id="welcomeScreen">
                 <div class="welcome-card">
                     <div class="welcome-icon">🔍</div>
-                    <h2>歡迎使用 PvP Stalker</h2>
-                    <p>上傳您的 <code>data.db</code> 檔案開始分析</p>
+                    <h2>歡迎使用 PvP Observer</h2>
+                    <p>上傳您的 <code>data.json</code> 檔案開始分析</p>
                     <div class="drop-zone" id="dropZone">
                         <div class="drop-zone-content">
                             <span class="drop-icon">📥</span>
@@ -72,9 +72,9 @@
             <div class="data-view hidden" id="dataView">
                 <!-- Tab Bar -->
                 <div class="tab-bar">
-                    <button class="tab active" data-tab="recent500">
-                        <span class="tab-icon">👥</span>
-                        最近500人
+                    <button class="tab active" data-tab="overall">
+                        <span class="tab-icon">📊</span>
+                        整體統計
                     </button>
                     <div class="match-tabs" id="matchTabs">
                         <!-- Dynamic match tabs inserted here -->
@@ -85,8 +85,14 @@
                 <div class="stats-bar">
                     <div class="stats-info">
                         <span class="stat-item">
-                            <span class="stat-label">玩家數量</span>
-                            <span class="stat-value" id="playerCount">0</span>
+                            <span class="stat-label">顯示</span>
+                            <input type="number" id="playerLimit" class="player-limit-input" value="500" min="10"
+                                max="10000" step="10">
+                            <span class="stat-label">位玩家</span>
+                        </span>
+                        <span class="stat-item">
+                            <span class="stat-label">總玩家數</span>
+                            <span class="stat-value" id="totalPlayerCount">0</span>
                         </span>
                         <span class="stat-item">
                             <span class="stat-label">比賽場次</span>

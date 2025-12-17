@@ -1,10 +1,12 @@
 /* =========================================
-   PvP Stalker - FFXIV Player Analyzer
+   PvP Observer - FFXIV Player Analyzer
    Modern Dark Theme with Glassmorphism
    ========================================= */
 
 /* CSS Reset & Base */
-*, *::before, *::after {
+*,
+*::before,
+*::after {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
@@ -17,12 +19,12 @@
     --bg-tertiary: #1a2130;
     --bg-card: rgba(26, 33, 48, 0.8);
     --bg-hover: rgba(255, 255, 255, 0.05);
-    
+
     /* Accent Colors */
     --accent-primary: #6366f1;
     --accent-secondary: #8b5cf6;
     --accent-glow: rgba(99, 102, 241, 0.3);
-    
+
     /* Tier Colors */
     --tier-t0: #ffd700;
     --tier-t1: #a855f7;
@@ -30,12 +32,12 @@
     --tier-t3: #22c55e;
     --tier-t4: #9ca3af;
     --tier-t5: #4b5563;
-    
+
     /* Team Colors */
     --team-red: #ef4444;
     --team-yellow: #eab308;
     --team-blue: #3b82f6;
-    
+
     /* KDA/Damage Colors */
     --stat-high: #22c55e;
     --stat-mid: #84cc16;
@@ -43,18 +45,18 @@
     --damage-high: #ef4444;
     --damage-mid: #f97316;
     --damage-low: #6b7280;
-    
+
     /* Text Colors */
     --text-primary: #f0f4f8;
     --text-secondary: #94a3b8;
     --text-muted: #64748b;
-    
+
     /* Border & Shadow */
     --border-color: rgba(255, 255, 255, 0.1);
     --border-glow: rgba(99, 102, 241, 0.5);
     --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.4);
     --shadow-glow: 0 0 20px var(--accent-glow);
-    
+
     /* Spacing */
     --space-xs: 0.25rem;
     --space-sm: 0.5rem;
@@ -62,18 +64,18 @@
     --space-lg: 1.5rem;
     --space-xl: 2rem;
     --space-2xl: 3rem;
-    
+
     /* Border Radius */
     --radius-sm: 6px;
     --radius-md: 10px;
     --radius-lg: 16px;
     --radius-xl: 24px;
-    
+
     /* Transitions */
     --transition-fast: 150ms ease;
     --transition-normal: 250ms ease;
     --transition-slow: 400ms ease;
-    
+
     /* Font */
     --font-main: 'Noto Sans TC', -apple-system, BlinkMacSystemFont, sans-serif;
     --font-display: 'Orbitron', sans-serif;
@@ -101,7 +103,7 @@ body::before {
     left: 0;
     width: 100%;
     height: 100%;
-    background: 
+    background:
         radial-gradient(ellipse at 20% 0%, rgba(99, 102, 241, 0.15) 0%, transparent 50%),
         radial-gradient(ellipse at 80% 100%, rgba(139, 92, 246, 0.1) 0%, transparent 50%),
         linear-gradient(180deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
@@ -153,8 +155,15 @@ body::before {
 }
 
 @keyframes pulse {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.1); }
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.1);
+    }
 }
 
 .logo-text {
@@ -257,6 +266,9 @@ body::before {
     flex: 1;
     padding: var(--space-xl);
     position: relative;
+    max-width: 1600px;
+    margin: 0 auto;
+    width: 100%;
 }
 
 /* =========================================
@@ -288,8 +300,15 @@ body::before {
 }
 
 @keyframes float {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-10px); }
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-10px);
+    }
 }
 
 .welcome-card h2 {
@@ -375,8 +394,15 @@ body::before {
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .hidden {
@@ -426,7 +452,32 @@ body::before {
 
 .match-tabs {
     display: flex;
+    gap: var(--space-md);
+    flex-wrap: wrap;
+}
+
+.match-date-group {
+    display: flex;
+    flex-direction: column;
     gap: var(--space-sm);
+    padding: var(--space-sm);
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: var(--radius-md);
+}
+
+.match-date-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    padding: 0 var(--space-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.match-time-tabs {
+    display: flex;
+    gap: var(--space-xs);
+    flex-wrap: wrap;
 }
 
 /* Stats Bar */
@@ -449,20 +500,42 @@ body::before {
 
 .stat-item {
     display: flex;
-    flex-direction: column;
+    align-items: center;
+    gap: var(--space-sm);
 }
 
 .stat-label {
-    font-size: 0.75rem;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
 }
 
 .stat-value {
     font-size: 1.25rem;
     font-weight: 700;
     color: var(--text-primary);
+}
+
+.player-limit-input {
+    width: 80px;
+    padding: 4px 8px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 0.9rem;
+    text-align: center;
+    transition: all var(--transition-normal);
+}
+
+.player-limit-input:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 2px var(--accent-glow);
+}
+
+.player-limit-input:hover {
+    border-color: var(--accent-primary);
 }
 
 /* =========================================
@@ -640,17 +713,33 @@ body::before {
     font-weight: 600;
 }
 
-.stat-kda.high { color: var(--stat-high); }
-.stat-kda.mid { color: var(--stat-mid); }
-.stat-kda.low { color: var(--text-secondary); }
+.stat-kda.high {
+    color: var(--stat-high);
+}
+
+.stat-kda.mid {
+    color: var(--stat-mid);
+}
+
+.stat-kda.low {
+    color: var(--text-secondary);
+}
 
 .stat-damage {
     font-weight: 600;
 }
 
-.stat-damage.high { color: var(--damage-high); }
-.stat-damage.mid { color: var(--damage-mid); }
-.stat-damage.low { color: var(--text-secondary); }
+.stat-damage.high {
+    color: var(--damage-high);
+}
+
+.stat-damage.mid {
+    color: var(--damage-mid);
+}
+
+.stat-damage.low {
+    color: var(--text-secondary);
+}
 
 .stat-matches {
     color: var(--text-secondary);
@@ -708,7 +797,9 @@ body::before {
 }
 
 @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 /* =========================================
@@ -767,29 +858,30 @@ body::before {
         gap: var(--space-md);
         padding: var(--space-md);
     }
-    
-    .header-left, .header-right {
+
+    .header-left,
+    .header-right {
         width: 100%;
         justify-content: center;
     }
-    
+
     .logo-subtitle {
         display: none;
     }
-    
+
     .main-content {
         padding: var(--space-md);
     }
-    
+
     .stats-bar {
         flex-direction: column;
         gap: var(--space-md);
     }
-    
+
     .player-table {
         font-size: 0.8rem;
     }
-    
+
     .player-table th,
     .player-table td {
         padding: var(--space-sm);
