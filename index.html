@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎮 PvP Stalker - FFXIV 玩家分析器</title>
+    <meta name="description" content="分析 FFXIV PvP 玩家數據，查看 KDA、傷害統計和 Tier 排名">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Orbitron:wght@500;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="css/index.css">
+</head>
+
+<body>
+    <div id="app">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-left">
+                <h1 class="logo">
+                    <span class="logo-icon">⚔️</span>
+                    <span class="logo-text">PvP Stalker</span>
+                </h1>
+                <span class="logo-subtitle">FFXIV 玩家分析器</span>
+            </div>
+            <div class="header-right">
+                <div class="upload-zone" id="uploadZone">
+                    <input type="file" id="fileInput" accept=".db,.json" hidden>
+                    <button class="btn btn-primary" id="uploadBtn">
+                        <span class="btn-icon">📁</span>
+                        上傳資料
+                    </button>
+                </div>
+                <div class="db-status" id="dbStatus">
+                    <span class="status-dot"></span>
+                    <span class="status-text">未載入</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Welcome Screen (shown when no data) -->
+            <div class="welcome-screen" id="welcomeScreen">
+                <div class="welcome-card">
+                    <div class="welcome-icon">🔍</div>
+                    <h2>歡迎使用 PvP Stalker</h2>
+                    <p>上傳您的 <code>data.db</code> 檔案開始分析</p>
+                    <div class="drop-zone" id="dropZone">
+                        <div class="drop-zone-content">
+                            <span class="drop-icon">📥</span>
+                            <p>拖曳檔案至此處</p>
+                            <p class="drop-hint">或點擊上方按鈕選擇檔案</p>
+                        </div>
+                    </div>
+                    <div class="welcome-info">
+                        <h3>📍 檔案位置</h3>
+                        <code class="file-path">%AppData%\XIVLauncher\pluginConfigs\PvpStats\data.db</code>
+                        <div style="margin-top: 1.5rem;">
+                            <button class="btn btn-secondary" id="loadDemoBtn" style="width: 100%;">
+                                <span class="btn-icon">🧪</span>
+                                載入範例資料 (data.json)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Data View (shown when data loaded) -->
+            <div class="data-view hidden" id="dataView">
+                <!-- Tab Bar -->
+                <div class="tab-bar">
+                    <button class="tab active" data-tab="recent500">
+                        <span class="tab-icon">👥</span>
+                        最近500人
+                    </button>
+                    <div class="match-tabs" id="matchTabs">
+                        <!-- Dynamic match tabs inserted here -->
+                    </div>
+                </div>
+
+                <!-- Stats Bar -->
+                <div class="stats-bar">
+                    <div class="stats-info">
+                        <span class="stat-item">
+                            <span class="stat-label">玩家數量</span>
+                            <span class="stat-value" id="playerCount">0</span>
+                        </span>
+                        <span class="stat-item">
+                            <span class="stat-label">比賽場次</span>
+                            <span class="stat-value" id="matchCount">0</span>
+                        </span>
+                    </div>
+                    <div class="stats-actions">
+                        <button class="btn btn-secondary" id="refreshBtn">
+                            <span class="btn-icon">🔄</span>
+                            重新整理
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Player Table -->
+                <div class="table-container">
+                    <table class="player-table" id="playerTable">
+                        <thead>
+                            <tr>
+                                <th class="sortable" data-sort="tier">Tier</th>
+                                <th class="sortable team-col hidden" data-sort="team">陣營</th>
+                                <th class="sortable" data-sort="name">名稱</th>
+                                <th class="sortable" data-sort="matches">紛爭前線</th>
+                                <th class="sortable" data-sort="kda">KDA</th>
+                                <th class="sortable" data-sort="damage">傷害(萬)</th>
+                                <th class="sortable" data-sort="job">常用職業</th>
+                            </tr>
+                        </thead>
+                        <tbody id="playerTableBody">
+                            <!-- Dynamic rows inserted here -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Loading Overlay -->
+                <div class="loading-overlay hidden" id="loadingOverlay">
+                    <div class="loading-spinner"></div>
+                    <p>載入中...</p>
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>Made with ❤️ for FFXIV PvP Community</p>
+            <p class="footer-note">數據來源：PvpStats 插件</p>
+        </footer>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/litedb-parser.js"></script>
+    <script src="js/tier-calculator.js"></script>
+    <script src="js/app.js"></script>
+</body>
+
+</html>

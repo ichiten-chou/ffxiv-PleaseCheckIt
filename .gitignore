@@ -1,0 +1,24 @@
+# FFxiv-Pvp-Stalker .gitignore
+
+# OS generated files
+.DS_Store
+.DS_Store?
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# User data files (should be uploaded by users, not committed)
+data.json
+data.db
+
+# Log files
+*.log
+
+# Node modules (if using any build tools later)
+node_modules/
