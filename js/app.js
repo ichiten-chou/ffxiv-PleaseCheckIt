@@ -117,7 +117,7 @@ class PvPObserverApp {
         // Load demo data button
         // Load demo data buttons
         document.getElementById('loadDemoBtn')?.addEventListener('click', () => {
-            this.loadDemoData('data.json', '繁中範例資料');
+            this.loadDemoData('data_tc.json', '繁中範例資料');
         });
         document.getElementById('loadDemoGlobalBtn')?.addEventListener('click', () => {
             this.loadDemoData('data_global.json', '國際範例資料');
