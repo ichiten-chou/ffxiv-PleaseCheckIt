@@ -539,7 +539,10 @@ body::before {
     backdrop-filter: blur(8px);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-lg);
-    overflow: hidden;
+    overflow-x: auto;
+    /* Allow horizontal scroll if needed */
+    overflow-y: visible;
+    /* Allow tooltips to show above */
 }
 
 .player-table {
@@ -829,7 +832,7 @@ body::before {
 [data-tooltip]::after {
     content: attr(data-tooltip);
     position: absolute;
-    bottom: 100%;
+    bottom: calc(100% + 5px);
     left: 50%;
     transform: translateX(-50%);
     padding: var(--space-sm) var(--space-md);
@@ -841,7 +844,9 @@ body::before {
     opacity: 0;
     visibility: hidden;
     transition: all var(--transition-fast);
-    z-index: 100;
+    z-index: 1000;
+    pointer-events: none;
+    box-shadow: var(--shadow-card);
 }
 
 [data-tooltip]:hover::after {
