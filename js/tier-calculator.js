@@ -18,9 +18,9 @@ class TierCalculator {
 
         // Weights for tier score calculation
         this.weights = {
-            kda: 0.45,
+            kda: 0.50,
             damage: 0.40,
-            matches: 0.15
+            matches: 0.10
         };
 
         // Minimum matches to qualify for tier
@@ -42,13 +42,13 @@ class TierCalculator {
 
         // Calculate distributions for percentile calculations
         const kdaValues = qualifiedPlayers.map(p => p.kda).sort((a, b) => a - b);
-        const dmgValues = qualifiedPlayers.map(p => p.avgDamage).sort((a, b) => a - b);
+        const dmgValues = qualifiedPlayers.map(p => p.weightedAvgDamage || p.avgDamage).sort((a, b) => a - b);
         const matchValues = qualifiedPlayers.map(p => p.flMatches).sort((a, b) => a - b);
 
         // Calculate tier scores for each player
         qualifiedPlayers.forEach(player => {
             const kdaPercentile = this.getPercentile(player.kda, kdaValues);
-            const dmgPercentile = this.getPercentile(player.avgDamage, dmgValues);
+            const dmgPercentile = this.getPercentile(player.weightedAvgDamage || player.avgDamage, dmgValues);
             const matchPercentile = this.getPercentile(player.flMatches, matchValues);
 
             player.tierScore = (

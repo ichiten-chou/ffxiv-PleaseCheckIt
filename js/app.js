@@ -613,6 +613,7 @@ class PvPObserverApp {
                         totalDeaths: 0,
                         totalAssists: 0,
                         totalDamage: 0,
+                        totalDamageToOther: 0,
                         jobCounts: {},
                         tier: null,
                         tierScore: 0
@@ -625,6 +626,7 @@ class PvPObserverApp {
                 stats.totalDeaths += player.deaths || 0;
                 stats.totalAssists += player.assists || 0;
                 stats.totalDamage += player.damage || 0;
+                stats.totalDamageToOther += player.damageToOther || 0;
 
                 if (player.job) {
                     stats.jobCounts[player.job] = (stats.jobCounts[player.job] || 0) + 1;
@@ -639,9 +641,15 @@ class PvPObserverApp {
                 ? (player.totalKills + player.totalAssists) / player.totalDeaths
                 : player.totalKills + player.totalAssists;
 
-            // Average damage
+            // Average damage (pure player damage)
             player.avgDamage = player.flMatches > 0
                 ? player.totalDamage / player.flMatches
+                : 0;
+
+            // Weighted average damage for tier calculation
+            // Formula: Player Damage + 20% of Objective Damage
+            player.weightedAvgDamage = player.flMatches > 0
+                ? (player.totalDamage + (player.totalDamageToOther * 0.2)) / player.flMatches
                 : 0;
 
             // Most played job
