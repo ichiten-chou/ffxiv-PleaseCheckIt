@@ -832,7 +832,8 @@ body::before {
 [data-tooltip]::after {
     content: attr(data-tooltip);
     position: absolute;
-    bottom: calc(100% + 5px);
+    top: calc(100% + 5px);
+    /* Show below instead of above */
     left: 50%;
     transform: translateX(-50%);
     padding: var(--space-sm) var(--space-md);
