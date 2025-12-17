@@ -97,7 +97,20 @@ try {
                             if ($psDoc.ContainsKey("Kills")) { $pData.kills = $psDoc["Kills"].AsInt32 }
                             if ($psDoc.ContainsKey("Deaths")) { $pData.deaths = $psDoc["Deaths"].AsInt32 }
                             if ($psDoc.ContainsKey("Assists")) { $pData.assists = $psDoc["Assists"].AsInt32 }
-                            if ($psDoc.ContainsKey("DamageDealt")) { $pData.damage = $psDoc["DamageDealt"].AsInt64 }
+                            
+                            # Calculate correct player damage (subtract damage to crystals/objectives)
+                            if ($psDoc.ContainsKey("DamageDealt")) {
+                                $damageDealt = $psDoc["DamageDealt"].AsInt64
+                                $damageToOther = 0
+                                
+                                # In Fields of Glory, DamageToOther contains damage to crystals
+                                if ($psDoc.ContainsKey("DamageToOther")) {
+                                    $damageToOther = $psDoc["DamageToOther"].AsInt64
+                                }
+                                
+                                # Correct player damage = Total damage - Damage to objectives
+                                $pData.damage = $damageDealt - $damageToOther
+                            }
                         }
                         
                         [void]$playerList.Add($pData)
