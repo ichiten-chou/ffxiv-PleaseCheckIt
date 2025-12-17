@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🎮 PvP Observer - FFXIV 玩家分析器</title>
+    <title>調查看看</title>
     <meta name="description" content="觀察並分析 FFXIV PvP 玩家數據，查看 KDA、傷害統計和 Tier 排名">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -21,9 +21,9 @@
             <div class="header-left">
                 <h1 class="logo">
                     <span class="logo-icon">⚔️</span>
-                    <span class="logo-text">PvP Observer</span>
+                    <span class="logo-text">調查看看</span>
                 </h1>
-                <span class="logo-subtitle">FFXIV 玩家分析器</span>
+                <span class="logo-subtitle">Please check it.</span>
             </div>
             <div class="header-right">
                 <div class="upload-zone" id="uploadZone">
@@ -46,7 +46,7 @@
             <div class="welcome-screen" id="welcomeScreen">
                 <div class="welcome-card">
                     <div class="welcome-icon">🔍</div>
-                    <h2>歡迎使用 PvP Observer</h2>
+                    <h2>調查看看</h2>
                     <p>上傳您的 <code>data.json</code> 檔案開始分析</p>
                     <div class="drop-zone" id="dropZone">
                         <div class="drop-zone-content">
@@ -56,12 +56,14 @@
                         </div>
                     </div>
                     <div class="welcome-info">
-                        <h3>📍 檔案位置</h3>
-                        <code class="file-path">%AppData%\XIVLauncher\pluginConfigs\PvpStats\data.db</code>
-                        <div style="margin-top: 1.5rem;">
-                            <button class="btn btn-secondary" id="loadDemoBtn" style="width: 100%;">
+                        <div style="margin-top: 1.5rem; display: flex; gap: 10px; justify-content: center;">
+                            <button class="btn btn-secondary" id="loadDemoBtn">
                                 <span class="btn-icon">🧪</span>
-                                載入範例資料 (data.json)
+                                繁中data.json
+                            </button>
+                            <button class="btn btn-secondary" id="loadDemoGlobalBtn">
+                                <span class="btn-icon">🌍</span>
+                                國際data.json
                             </button>
                         </div>
                     </div>
@@ -73,7 +75,6 @@
                 <!-- Tab Bar -->
                 <div class="tab-bar">
                     <button class="tab active" data-tab="overall">
-                        <span class="tab-icon">📊</span>
                         整體統計
                     </button>
                     <div class="match-tabs" id="matchTabs">
@@ -106,12 +107,15 @@
                     </div>
                 </div>
 
+                <!-- Match Summary (shown in match view) -->
+                <div id="matchSummary" class="match-summary hidden"></div>
+
                 <!-- Player Table -->
                 <div class="table-container">
                     <table class="player-table" id="playerTable">
                         <thead>
                             <tr>
-                                <th class="sortable" data-sort="tier">Tier</th>
+                                <th class="sortable" data-sort="tier">評分</th>
                                 <th class="sortable team-col hidden" data-sort="team">陣營</th>
                                 <th class="sortable" data-sort="name">名稱</th>
                                 <th class="sortable" data-sort="matches">紛爭前線</th>

@@ -139,7 +139,23 @@ class TierCalculator {
 
         if (percentile >= 0.7) return 'high';
         if (percentile >= 0.4) return 'mid';
+        if (percentile >= 0.7) return 'high';
+        if (percentile >= 0.4) return 'mid';
         return 'low';
+    }
+
+    /**
+     * Get CSS class for score value
+     * @param {number} score - Tier score (0-100)
+     * @returns {string} CSS class
+     */
+    getScoreClass(score) {
+        if (!score && score !== 0) return 'tier-none'; // Handle null/undefined
+        if (score >= 90) return 'tier-t0'; // Orange
+        if (score >= 75) return 'tier-t1'; // Purple
+        if (score >= 50) return 'tier-t2'; // Blue
+        if (score >= 25) return 'tier-t3'; // Green
+        return 'tier-t4';                  // Grey
     }
 
     /**

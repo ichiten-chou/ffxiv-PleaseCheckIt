@@ -31,7 +31,58 @@ class PvPObserverApp {
 
     init() {
         this.bindEvents();
+        this.initTooltips();
         console.log('PvP Observer initialized');
+    }
+
+    initTooltips() {
+        // Create global tooltip element
+        const tooltip = document.createElement('div');
+        tooltip.id = 'globalTooltip';
+        tooltip.className = 'global-tooltip hidden';
+        document.body.appendChild(tooltip);
+        this.tooltipEl = tooltip;
+
+        // Delegate tooltip events on body
+        document.body.addEventListener('mouseenter', (e) => {
+            const target = e.target.closest('[data-tooltip]');
+            if (target) {
+                this.showTooltip(target, target.getAttribute('data-tooltip'));
+            }
+        }, true);
+
+        document.body.addEventListener('mouseleave', (e) => {
+            const target = e.target.closest('[data-tooltip]');
+            if (target) {
+                this.hideTooltip();
+            }
+        }, true);
+    }
+
+    showTooltip(target, text) {
+        const tooltip = this.tooltipEl;
+        tooltip.textContent = text;
+        tooltip.classList.remove('hidden');
+
+        // Position tooltip below the target
+        const rect = target.getBoundingClientRect();
+        const tooltipRect = tooltip.getBoundingClientRect();
+
+        let left = rect.left + (rect.width / 2) - (tooltipRect.width / 2);
+        let top = rect.bottom + 8;
+
+        // Keep tooltip within viewport
+        if (left < 8) left = 8;
+        if (left + tooltipRect.width > window.innerWidth - 8) {
+            left = window.innerWidth - tooltipRect.width - 8;
+        }
+
+        tooltip.style.left = left + 'px';
+        tooltip.style.top = top + 'px';
+    }
+
+    hideTooltip() {
+        this.tooltipEl.classList.add('hidden');
     }
 
     bindEvents() {
@@ -64,8 +115,12 @@ class PvPObserverApp {
         }
 
         // Load demo data button
+        // Load demo data buttons
         document.getElementById('loadDemoBtn')?.addEventListener('click', () => {
-            this.loadDemoData();
+            this.loadDemoData('data.json', '繁中範例資料');
+        });
+        document.getElementById('loadDemoGlobalBtn')?.addEventListener('click', () => {
+            this.loadDemoData('data_global.json', '國際範例資料');
         });
 
         // Refresh button
@@ -91,14 +146,14 @@ class PvPObserverApp {
         });
     }
 
-    async loadDemoData() {
+    async loadDemoData(filename = 'data.json', label = '範例資料') {
         this.showLoading(true);
-        this.updateStatus('載入範例資料...', false);
+        this.updateStatus(`載入${label}...`, false);
 
         try {
-            const response = await fetch('data.json');
+            const response = await fetch(filename);
             if (!response.ok) {
-                throw new Error('找不到 data.json 檔案');
+                throw new Error(`找不到 ${filename} 檔案`);
             }
             const jsonData = await response.json();
 
@@ -204,9 +259,28 @@ class PvPObserverApp {
                 };
             });
 
+            // Normalize Teams array and calculate rankings
+            const teams = (match.Teams || []).map(t => ({
+                team: this.normalizeTeam(t.team, null),
+                teamNum: t.team,
+                progress: t.progress || 0,
+                occupations: t.occupations || 0,
+                kills: t.kills || 0,
+                deaths: t.deaths || 0
+            }));
+
+            // Sort by progress descending to determine ranking
+            const sortedTeams = [...teams].sort((a, b) => b.progress - a.progress);
+            sortedTeams.forEach((t, i) => t.ranking = i + 1);
+
+            // Create lookup by teamNum
+            const teamLookup = new Map(teams.map(t => [t.teamNum, t]));
+
             return {
                 MatchStartTime: match.MatchStartTime,
-                PlayerScoreboards: players
+                PlayerScoreboards: players,
+                Teams: teams,
+                TeamLookup: teamLookup
             };
         });
     }
@@ -215,8 +289,8 @@ class PvPObserverApp {
      * Normalize team value to Chinese name
      */
     normalizeTeam(team, alliance) {
-        // Handle numeric team/alliance values
-        const teamNum = typeof team === 'number' ? team : (typeof alliance === 'number' ? alliance : -1);
+        // Handle numeric team values
+        const teamNum = typeof team === 'number' ? team : -1;
 
         if (teamNum === 0 || team === 'Maelstrom') return '黑渦團';
         if (teamNum === 1 || team === 'Adders') return '雙蛇黨';
@@ -492,13 +566,13 @@ class PvPObserverApp {
             .map(m => ({ ...m, parsedTime: this.parseMatchTime(m.MatchStartTime) }))
             .sort((a, b) => b.parsedTime - a.parsedTime);
 
-        // Get unique dates from last 10 days
+        // Get unique dates from last 100 days
         const dateMap = new Map();
         const now = new Date();
-        const tenDaysAgo = new Date(now.getTime() - 10 * 24 * 60 * 60 * 1000);
+        const hundredDaysAgo = new Date(now.getTime() - 100 * 24 * 60 * 60 * 1000);
 
         sortedMatches.forEach((match, index) => {
-            if (match.parsedTime < tenDaysAgo) return;
+            if (match.parsedTime < hundredDaysAgo) return;
 
             const dateKey = this.formatDateKey(match.parsedTime);
             if (!dateMap.has(dateKey)) {
@@ -614,6 +688,17 @@ class PvPObserverApp {
             .sort((a, b) => b[1] - a[1])[0][0];
     }
 
+    getTop3JobsTooltip(jobCounts) {
+        if (!jobCounts || Object.keys(jobCounts).length === 0) {
+            return '無資料';
+        }
+        return Object.entries(jobCounts)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 3)
+            .map(([job, count]) => `${job}: ${count}場`)
+            .join(' | ');
+    }
+
     updateDisplayPlayers() {
         if (this.currentView === 'overall') {
             // Apply player limit for overall stats view
@@ -641,6 +726,9 @@ class PvPObserverApp {
         // Map match players to single-match stats (not cumulative)
         const playerLookup = new Map(this.allPlayers.map(p => [p.fullName, p]));
 
+        // Get team lookup from match data
+        const teamLookup = match.TeamLookup || new Map();
+
         return match.PlayerScoreboards.map(player => {
             const key = `${player.name}@${player.server || 'Unknown'}`;
             const fullStats = playerLookup.get(key);
@@ -651,6 +739,11 @@ class PvPObserverApp {
             const assists = player.assists || 0;
             const damage = player.damage || 0;
             const matchKda = deaths > 0 ? (kills + assists) / deaths : kills + assists;
+
+            // Get team stats by looking up player's team number
+            const teamNum = typeof player.team === 'number' ? player.team :
+                (player.team === '黑渦團' ? 0 : player.team === '雙蛇黨' ? 1 : player.team === '恆輝隊' ? 2 : -1);
+            const teamStats = teamLookup.get(teamNum) || {};
 
             return {
                 name: player.name,
@@ -667,7 +760,13 @@ class PvPObserverApp {
                 matchDamage: damage,
                 matchJob: player.job || '未知',
                 team: player.team || '',
-                // Overall stats for reference
+                // Team stats for this match
+                teamRanking: teamStats.ranking || '-',
+                teamProgress: teamStats.progress || 0,
+                teamKills: teamStats.kills || 0,
+                teamDeaths: teamStats.deaths || 0,
+                // Overall stats for tooltip and reference
+                jobCounts: fullStats?.jobCounts || {},
                 flMatches: fullStats?.flMatches || 0,
                 kda: fullStats?.kda || 0,
                 avgDamage: fullStats?.avgDamage || 0,
@@ -685,11 +784,15 @@ class PvPObserverApp {
 
             switch (col) {
                 case 'tier':
-                    // Sort by tier (T0 first), then by tierScore
+                    // Sort by tier (T0 first = smallest number), then by tierScore (higher score first)
                     valA = a.tier ? this.tierToNum(a.tier) : 99;
                     valB = b.tier ? this.tierToNum(b.tier) : 99;
-                    if (valA !== valB) return asc ? valA - valB : valB - valA;
-                    return asc ? a.tierScore - b.tierScore : b.tierScore - a.tierScore;
+                    if (valA !== valB) {
+                        // Tier sorting: ascending means T0 first (lower tier number = better)
+                        return asc ? valA - valB : valB - valA;
+                    }
+                    // Same tier: always sort by tierScore descending (higher score = better)
+                    return (b.tierScore || 0) - (a.tierScore || 0);
 
                 case 'team':
                     valA = a.team || '';
@@ -703,9 +806,15 @@ class PvPObserverApp {
                     return asc ? a.flMatches - b.flMatches : b.flMatches - a.flMatches;
 
                 case 'kda':
+                    if (this.currentView.startsWith('date-')) {
+                        return asc ? (a.matchKda || 0) - (b.matchKda || 0) : (b.matchKda || 0) - (a.matchKda || 0);
+                    }
                     return asc ? a.kda - b.kda : b.kda - a.kda;
 
                 case 'damage':
+                    if (this.currentView.startsWith('date-')) {
+                        return asc ? (a.matchDamage || 0) - (b.matchDamage || 0) : (b.matchDamage || 0) - (a.matchDamage || 0);
+                    }
                     return asc ? a.avgDamage - b.avgDamage : b.avgDamage - a.avgDamage;
 
                 case 'job':
@@ -796,7 +905,6 @@ class PvPObserverApp {
 
             return `<div class="match-date-group ${isExpanded ? 'expanded' : ''}" data-date="${dateKey}">
                 <button class="tab date-tab" data-date-toggle="${dateKey}">
-                    <span class="tab-icon">📅</span>
                     ${dateLabel}
                     <span class="match-count">(${matches.length})</span>
                     <span class="expand-icon">${isExpanded ? '▼' : '▶'}</span>
@@ -860,7 +968,13 @@ class PvPObserverApp {
         const isMatchView = this.currentView.startsWith('date-');
 
         tbody.innerHTML = this.displayPlayers.map(player => {
-            const tierClass = this.tierCalculator.getTierClass(player.tier);
+            const tierClass = this.tierCalculator.getScoreClass(player.tierScore);
+            const scoreTooltip = player.tierScore != null ? player.tierScore.toFixed(2) : '-';
+            const scoreDisplay = player.tierScore != null ? Math.round(player.tierScore) : '-';
+
+            const tierHtml = player.tier
+                ? `<span class="tier-badge ${tierClass}" data-tooltip="${scoreTooltip}">${scoreDisplay}</span>`
+                : `<span class="tier-none">-</span>`;
 
             // For match view: use match-specific stats; for overall: use cumulative stats
             if (isMatchView) {
@@ -871,12 +985,7 @@ class PvPObserverApp {
 
                 return `
                     <tr>
-                        <td>
-                            ${player.tier
-                        ? `<span class="tier-badge ${tierClass}" data-tooltip="Score: ${player.tierScore?.toFixed(1) || 0}">${player.tier}</span>`
-                        : `<span class="tier-none">-</span>`
-                    }
-                        </td>
+                        <td>${tierHtml}</td>
                         <td class="team-col">${this.renderTeamBadge(player.team)}</td>
                         <td class="name-col">
                             <span class="player-name">${this.escapeHtml(player.name)}</span>
@@ -888,7 +997,7 @@ class PvPObserverApp {
                         <td class="stat-damage" data-tooltip="${this.formatNumber(player.matchDamage || 0)}">
                             ${damageDisplay}
                         </td>
-                        <td><span class="job-badge">${this.escapeHtml(jobDisplay)}</span></td>
+                        <td><span class="job-badge" data-tooltip="${this.getTop3JobsTooltip(player.jobCounts)}">${this.escapeHtml(jobDisplay)}</span></td>
                     </tr>
                 `;
             } else {
@@ -900,12 +1009,7 @@ class PvPObserverApp {
 
                 return `
                     <tr>
-                        <td>
-                            ${player.tier
-                        ? `<span class="tier-badge ${tierClass}" data-tooltip="Score: ${player.tierScore?.toFixed(1) || 0}">${player.tier}</span>`
-                        : `<span class="tier-none">-</span>`
-                    }
-                        </td>
+                        <td>${tierHtml}</td>
                         <td class="name-col">
                             <span class="player-name">${this.escapeHtml(player.name)}</span>
                             <span class="player-server">${this.escapeHtml(player.server)}</span>
@@ -917,14 +1021,94 @@ class PvPObserverApp {
                         <td class="stat-damage ${dmgClass}" data-tooltip="${this.formatNumber(player.avgDamage || 0)}">
                             ${player.avgDamage > 0 ? (player.avgDamage / 10000).toFixed(0) : '-'}
                         </td>
-                        <td><span class="job-badge">${this.escapeHtml(jobDisplay)}</span></td>
+                        <td><span class="job-badge" data-tooltip="${this.getTop3JobsTooltip(player.jobCounts)}">${this.escapeHtml(jobDisplay)}</span></td>
                     </tr>
                 `;
             }
         }).join('');
 
+        // Render match summary if in match view
+        if (isMatchView) {
+            this.renderMatchSummary();
+            document.getElementById('matchSummary').classList.remove('hidden');
+        } else {
+            document.getElementById('matchSummary').classList.add('hidden');
+        }
+
         this.updateSortIndicators();
         this.updateTableHeaders();
+    }
+
+    renderMatchSummary() {
+        const summaryContainer = document.getElementById('matchSummary');
+        if (!summaryContainer) return;
+
+        // Parse match index from view
+        const parts = this.currentView.split('-');
+        const matchIndex = parseInt(parts[parts.length - 1]);
+
+        // Get match data
+        if (matchIndex >= this.rawMatches.length) return;
+
+        // Sort matches to find the correct one (same logic as getMatchPlayers)
+        const sortedMatches = this.rawMatches
+            .filter(m => m.MatchStartTime)
+            .sort((a, b) => this.parseMatchTime(b.MatchStartTime) - this.parseMatchTime(a.MatchStartTime));
+
+        const match = sortedMatches[matchIndex];
+        if (!match || !match.Teams) return;
+
+        // Sort teams by ranking (1st to 3rd)
+        const sortedTeams = [...match.Teams].sort((a, b) => a.ranking - b.ranking);
+
+        const teamConfig = {
+            0: { class: 'team-red', icon: '🔴', name: '黑渦團' },
+            1: { class: 'team-yellow', icon: '🟡', name: '雙蛇黨' },
+            2: { class: 'team-blue', icon: '🔵', name: '恆輝隊' },
+            '0': { class: 'team-red', icon: '🔴', name: '黑渦團' },
+            '1': { class: 'team-yellow', icon: '🟡', name: '雙蛇黨' },
+            '2': { class: 'team-blue', icon: '🔵', name: '恆輝隊' },
+            '黑渦團': { class: 'team-red', icon: '🔴', name: '黑渦團' },
+            'Maelstrom': { class: 'team-red', icon: '🔴', name: '黑渦團' },
+            '雙蛇黨': { class: 'team-yellow', icon: '🟡', name: '雙蛇黨' },
+            'Adders': { class: 'team-yellow', icon: '🟡', name: '雙蛇黨' },
+            '恆輝隊': { class: 'team-blue', icon: '🔵', name: '恆輝隊' },
+            'Flames': { class: 'team-blue', icon: '🔵', name: '恆輝隊' }
+        };
+
+        const rankLabels = ['1ST', '2ND', '3RD'];
+
+        summaryContainer.innerHTML = sortedTeams.map((team, index) => {
+            const config = teamConfig[team.team] || { class: 'team-unknown', icon: '⚪', name: team.team };
+            const rankLabel = rankLabels[index] || `${team.ranking}TH`;
+
+            return `
+                <div class="team-card ${config.class}">
+                    <div class="rank-badge">${rankLabel}</div>
+                    <div class="team-header">
+                        <span class="team-name">${config.name}</span>
+                    </div>
+                    <div class="total-score">
+                        <span class="score-label">總分</span>
+                        <span class="score-value">${team.progress || 0}</span>
+                    </div>
+                    <div class="score-details">
+                        <div class="score-row">
+                            <span>佔點分數</span>
+                            <span>${team.occupations || 0}</span>
+                        </div>
+                        <div class="score-row">
+                            <span>擊殺分數</span>
+                            <span>${team.kills || 0}</span>
+                        </div>
+                        <div class="score-row">
+                            <span>死亡分數</span>
+                            <span>-${team.deaths || 0}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
     }
 
     updateTableHeaders() {
@@ -932,22 +1116,34 @@ class PvPObserverApp {
         const thead = document.querySelector('#playerTable thead tr');
         if (!thead) return;
 
-        // Update header visibility
+        // Update header visibility for match-specific columns
         document.querySelectorAll('.team-col').forEach(el => {
             el.classList.toggle('hidden', !isMatchView);
         });
 
-        // Update header text for match view
+        // Hide matches column in match view
         const matchesHeader = thead.querySelector('[data-sort="matches"]');
         if (matchesHeader) {
             matchesHeader.classList.toggle('hidden', isMatchView);
         }
+
+        // Update job header text
+        const jobHeader = thead.querySelector('[data-sort="job"]');
+        if (jobHeader) {
+            jobHeader.textContent = isMatchView ? '職業' : '常用職業';
+        }
     }
 
     renderTeamBadge(team) {
-        if (!team) return '-';
+        if (team === undefined || team === null) return '-';
 
         const teamMap = {
+            0: { class: 'team-red', text: '紅' },
+            1: { class: 'team-yellow', text: '黃' },
+            2: { class: 'team-blue', text: '藍' },
+            '0': { class: 'team-red', text: '紅' },
+            '1': { class: 'team-yellow', text: '黃' },
+            '2': { class: 'team-blue', text: '藍' },
             '黑渦團': { class: 'team-red', text: '紅' },
             'Maelstrom': { class: 'team-red', text: '紅' },
             '雙蛇黨': { class: 'team-yellow', text: '黃' },

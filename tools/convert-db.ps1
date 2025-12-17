@@ -67,6 +67,7 @@ try {
             $matchData = @{
                 MatchStartTime = $null
                 Players        = @()
+                Teams          = @()
             }
             
             # Extract MatchStartTime
@@ -146,7 +147,73 @@ try {
                 }
             }
             
+            # Extract TeamStats from Teams (Standard) or TeamScoreboards (Legacy)
+            $teamList = [System.Collections.ArrayList]::new()
+            
+            # Helper to map team name to ID
+            $teamNameMap = @{
+                "Maelstrom" = 0
+                "Adders"    = 1
+                "Flames"    = 2
+            }
+
+            if ($match.ContainsKey("Teams") -and $match["Teams"].IsDocument) {
+                # New format: Teams is a Dictionary<string, FLTeam>
+                $teamsDoc = $match["Teams"].AsDocument
+                foreach ($key in $teamsDoc.Keys) {
+                    $tDoc = $teamsDoc[$key].AsDocument
+                    $teamData = @{
+                        team        = 0
+                        ranking     = 0
+                        progress    = 0
+                        occupations = 0
+                        kills       = 0
+                        deaths      = 0
+                    }
+                    
+                    # Map team name/key to ID
+                    if ($teamNameMap.ContainsKey($key)) {
+                        $teamData.team = $teamNameMap[$key]
+                    }
+                    else {
+                        $teamData.team = -1 # Unknown
+                    }
+
+                    if ($tDoc.ContainsKey("Placement")) { $teamData.ranking = $tDoc["Placement"].AsInt32 }
+                    if ($tDoc.ContainsKey("TotalPoints")) { $teamData.progress = $tDoc["TotalPoints"].AsInt32 }
+                    if ($tDoc.ContainsKey("OccupationPoints")) { $teamData.occupations = $tDoc["OccupationPoints"].AsInt32 }
+                    if ($tDoc.ContainsKey("KillPoints")) { $teamData.kills = $tDoc["KillPoints"].AsInt32 }
+                    if ($tDoc.ContainsKey("DeathPointLosses")) { $teamData.deaths = $tDoc["DeathPointLosses"].AsInt32 }
+                    
+                    [void]$teamList.Add($teamData)
+                }
+            }
+            elseif ($match.ContainsKey("TeamScoreboards") -and $match["TeamScoreboards"].IsArray) {
+                # Legacy format
+                foreach ($team in $match["TeamScoreboards"].AsArray) {
+                    if ($team.IsDocument) {
+                        $tDoc = $team.AsDocument
+                        $teamData = @{
+                            team        = 0
+                            ranking     = 0
+                            progress    = 0
+                            occupations = 0
+                            kills       = 0
+                            deaths      = 0
+                        }
+                        if ($tDoc.ContainsKey("Team")) { $teamData.team = $tDoc["Team"].AsInt32 }
+                        if ($tDoc.ContainsKey("Progress")) { $teamData.progress = $tDoc["Progress"].AsInt32 }
+                        if ($tDoc.ContainsKey("Occupations")) { $teamData.occupations = $tDoc["Occupations"].AsInt32 }
+                        if ($tDoc.ContainsKey("Kills")) { $teamData.kills = $tDoc["Kills"].AsInt32 }
+                        if ($tDoc.ContainsKey("Deaths")) { $teamData.deaths = $tDoc["Deaths"].AsInt32 }
+                        # Estimate ranking if missing (based on progress) - skipped for now
+                        [void]$teamList.Add($teamData)
+                    }
+                }
+            }
+            
             $matchData.Players = $playerList.ToArray()
+            $matchData.Teams = $teamList.ToArray()
             [void]$matchList.Add($matchData)
         }
         
