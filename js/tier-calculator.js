@@ -1,30 +1,33 @@
 /**
  * Tier Calculator
- * Calculates player tiers based on KDA, Damage, and Match count
- * Ported from PvpPlayerInfo C# plugin
+ * Calculates player tiers based on KDA and Damage
+ * Ported from PvpPlayerInfo C# plugin v1.12
  */
 
 class TierCalculator {
     constructor() {
-        // Tier thresholds (percentile cutoffs)
+        // Tier thresholds (score-based, not percentile)
         this.tierCutoffs = {
-            T0: 0.95,  // Top 5%
-            T1: 0.85,  // Top 15%
-            T2: 0.65,  // Top 35%
-            T3: 0.30,  // Top 70%
-            T4: 0.10,  // Top 90%
-            T5: 0.00   // Bottom 10%
+            T0: 95,  // Score >= 95
+            T1: 90,  // Score >= 90
+            T2: 75,  // Score >= 75
+            T3: 50,  // Score >= 50
+            T4: 25,  // Score >= 25
+            T5: 0    // Score < 25
         };
 
-        // Weights for tier score calculation
+        // Weights for tier score calculation (no match count)
         this.weights = {
             kda: 0.50,
-            damage: 0.40,
-            matches: 0.10
+            damage: 0.50
         };
 
         // Minimum matches to qualify for tier
-        this.minMatches = 3;
+        this.minMatches = 1;
+
+        // Confidence weighting target matches
+        this.targetMatches = 3;
+        this.averageScore = 50.0;
     }
 
     /**
@@ -33,7 +36,7 @@ class TierCalculator {
      * @returns {Array} Players with tier information added
      */
     calculateTiers(players) {
-        // Filter players with sufficient data
+        // Filter players with minimum data
         const qualifiedPlayers = players.filter(p => p.flMatches >= this.minMatches);
 
         if (qualifiedPlayers.length === 0) {
@@ -43,29 +46,29 @@ class TierCalculator {
         // Calculate distributions for percentile calculations
         const kdaValues = qualifiedPlayers.map(p => p.kda).sort((a, b) => a - b);
         const dmgValues = qualifiedPlayers.map(p => p.weightedAvgDamage || p.avgDamage).sort((a, b) => a - b);
-        const matchValues = qualifiedPlayers.map(p => p.flMatches).sort((a, b) => a - b);
 
-        // Calculate tier scores for each player
+        // Calculate tier scores for each player with confidence weighting
         qualifiedPlayers.forEach(player => {
             const kdaPercentile = this.getPercentile(player.kda, kdaValues);
             const dmgPercentile = this.getPercentile(player.weightedAvgDamage || player.avgDamage, dmgValues);
-            const matchPercentile = this.getPercentile(player.flMatches, matchValues);
 
-            player.tierScore = (
+            // Raw score: KDA 50% + Damage 50%
+            const rawScore = (
                 kdaPercentile * this.weights.kda +
-                dmgPercentile * this.weights.damage +
-                matchPercentile * this.weights.matches
+                dmgPercentile * this.weights.damage
             ) * 100;
+
+            // Apply confidence weighting
+            const confidence = Math.min(player.flMatches / this.targetMatches, 1.0);
+            player.tierScore = (rawScore * confidence) + (this.averageScore * (1 - confidence));
         });
 
-        // Sort by tier score to determine rank percentiles
+        // Sort by tier score to determine rank
         const sortedByScore = [...qualifiedPlayers].sort((a, b) => b.tierScore - a.tierScore);
-        const totalPlayers = sortedByScore.length;
 
-        // Assign tiers based on rank percentile
+        // Assign tiers based on score (not percentile)
         sortedByScore.forEach((player, index) => {
-            const rankPercentile = 1.0 - (index / totalPlayers);
-            player.tier = this.getTierFromPercentile(rankPercentile);
+            player.tier = this.getTierFromScore(player.tierScore);
             player.tierRank = index + 1;
         });
 
@@ -103,16 +106,16 @@ class TierCalculator {
     }
 
     /**
-     * Get tier name from rank percentile
-     * @param {number} percentile - Rank percentile (0-1)
+     * Get tier name from score
+     * @param {number} score - Tier score (0-100)
      * @returns {string} Tier name (T0-T5)
      */
-    getTierFromPercentile(percentile) {
-        if (percentile >= this.tierCutoffs.T0) return 'T0';
-        if (percentile >= this.tierCutoffs.T1) return 'T1';
-        if (percentile >= this.tierCutoffs.T2) return 'T2';
-        if (percentile >= this.tierCutoffs.T3) return 'T3';
-        if (percentile >= this.tierCutoffs.T4) return 'T4';
+    getTierFromScore(score) {
+        if (score >= this.tierCutoffs.T0) return 'T0';
+        if (score >= this.tierCutoffs.T1) return 'T1';
+        if (score >= this.tierCutoffs.T2) return 'T2';
+        if (score >= this.tierCutoffs.T3) return 'T3';
+        if (score >= this.tierCutoffs.T4) return 'T4';
         return 'T5';
     }
 
