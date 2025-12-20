@@ -114,7 +114,6 @@ class PvPObserverApp {
             dropZone.addEventListener('click', () => fileInput?.click());
         }
 
-        // Load demo data button
         // Load demo data buttons
         document.getElementById('loadDemoBtn')?.addEventListener('click', () => {
             this.loadDemoData('data_tc.json', '繁中範例資料');
@@ -122,6 +121,9 @@ class PvPObserverApp {
         document.getElementById('loadDemoGlobalBtn')?.addEventListener('click', () => {
             this.loadDemoData('data_global.json', '國際範例資料');
         });
+
+        // Auto-load plugin data if exists
+        this.tryLoadPluginData();
 
         // Refresh button
         document.getElementById('refreshBtn')?.addEventListener('click', () => {
@@ -173,6 +175,25 @@ class PvPObserverApp {
             alert('載入範例資料失敗: ' + error.message + '\n\n請確保 data.json 檔案存在於同一目錄。');
         } finally {
             this.showLoading(false);
+        }
+    }
+
+    async tryLoadPluginData() {
+        try {
+            const response = await fetch('data_plugin.json');
+            if (response.ok) {
+                const jsonData = await response.json();
+                if (jsonData.flmatch && Array.isArray(jsonData.flmatch)) {
+                    this.rawMatches = this.normalizeJsonMatches(jsonData.flmatch);
+                    console.log('Auto-loaded plugin data:', this.rawMatches.length, 'matches');
+                    this.processData();
+                    this.showDataView();
+                    this.updateStatus(`已載入 ${this.rawMatches.length} 場比賽 (插件資料)`, true);
+                }
+            }
+        } catch (error) {
+            // Silently fail if plugin data doesn't exist
+            console.log('No plugin data found, showing welcome screen');
         }
     }
 
@@ -254,6 +275,7 @@ class PvPObserverApp {
                     deaths: p.deaths || 0,
                     assists: p.assists || 0,
                     damage: p.damage || 0,
+                    damageToOther: p.damageToOther || 0,
                     job: p.job || null,
                     team: this.normalizeTeam(p.team, p.alliance)
                 };
@@ -641,15 +663,16 @@ class PvPObserverApp {
                 ? (player.totalKills + player.totalAssists) / player.totalDeaths
                 : player.totalKills + player.totalAssists;
 
-            // Average damage (pure player damage)
+            // Average damage (pure player damage, excluding damage to objectives)
+            const playerDamage = (player.totalDamage || 0) - (player.totalDamageToOther || 0);
             player.avgDamage = player.flMatches > 0
-                ? player.totalDamage / player.flMatches
+                ? playerDamage / player.flMatches
                 : 0;
 
             // Weighted average damage for tier calculation
             // Formula: Player Damage + 20% of Objective Damage
             player.weightedAvgDamage = player.flMatches > 0
-                ? (player.totalDamage + (player.totalDamageToOther * 0.2)) / player.flMatches
+                ? (playerDamage + (player.totalDamageToOther * 0.2)) / player.flMatches
                 : 0;
 
             // Most played job
